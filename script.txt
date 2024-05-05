@@ -1,0 +1,231 @@
+PLAYER SCRIPT:
+using System.Collections;
+using System.Collections.Generic;
+using Unity.VisualScripting;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+
+public class PlayerMovementGSSPP : MonoBehaviour
+{
+    [SerializeField] private float moveSpeed;
+    [SerializeField] private Rigidbody rb;
+    [SerializeField] private float rotSpeed;
+    [SerializeField] private Camera cam;
+    [SerializeField] private int gunNum;
+    [SerializeField] private GameObject mNine;
+    [SerializeField] private GameObject gunOBJ;
+    public int HP;
+    [SerializeField] private GameObject GOUI;
+    [SerializeField] private GameObject Bullet;
+    [SerializeField] private GameObject sPoint;
+    [SerializeField] private float bSpeed;
+    [SerializeField] private float range;
+    [SerializeField] private ParticleSystem MF;
+    [SerializeField] private ParticleSystem CD;
+    private bool canShoot = true;
+    void Start()
+    {
+        sPoint.GetComponent<MeshRenderer>().enabled = false;
+        GOUI.SetActive(false);
+        rb = GetComponent<Rigidbody>();
+        Cursor.lockState = CursorLockMode.Locked;
+    }
+
+    // Update is called once per frame
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Q))
+        {
+            rotSpeed += 50f;
+        }
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            if (rotSpeed > 50)
+            {
+                rotSpeed -= 50f;
+            }
+        }
+        if (Input.GetMouseButton(0))
+        {
+            GameObject bullet =Shoot();
+            if (bullet != null)
+            {
+                StartCoroutine(clock(2f, bullet));
+            }
+            else { Debug.Log("bruh"); }
+        }
+    }
+    void FixedUpdate()
+    {
+        GameObject[] bulletClones = GameObject.FindGameObjectsWithTag("Bullet");
+        foreach (GameObject bOBJ in bulletClones)
+        {
+            //bOBJ.transform.LookAt(bOBJ.GetComponent<VARHOLDER>().hitP);
+           // bOBJ.transform.Translate(bOBJ.transform.forward * Time.deltaTime * bSpeed);
+        }
+        float mouseX = Input.GetAxis("Mouse X");
+        float mouseY = Input.GetAxis("Mouse Y");
+        transform.Rotate((Vector3.up * Time.deltaTime) * rotSpeed * mouseX);
+        cam.gameObject.transform.Rotate(Vector3.right * Time.deltaTime * mouseY * rotSpeed * -1);
+        float moveRL = Input.GetAxis("Horizontal");
+        float moveFB = Input.GetAxis("Vertical");
+        transform.Translate(Vector3.forward * Time.deltaTime * moveSpeed * moveFB);
+        transform.Translate(Vector3.right * Time.deltaTime * moveSpeed * moveRL);
+        if(HP <= 0)
+        {
+            GOUI.SetActive(true);
+            Time.timeScale = 0;
+        }
+    }
+    void checkGun()
+    {
+        if (gunNum == 0)
+        {
+            gunOBJ = mNine;
+
+        }
+    }
+    GameObject Shoot()
+    {
+        /*if (Bullet != null)
+        {
+            GameObject Bclone = Instantiate(Bullet);
+            Bclone.SetActive(true);
+            Bclone.GetComponent<MeshRenderer>().enabled = true;
+            Bullet.transform.position = sPoint.transform.position;
+            Bclone.transform.rotation = sPoint.transform.rotation;
+            Debug.Log("Bullet isn't null");
+            return Bclone;
+        }
+        else { return null; } */
+       
+        RaycastHit hit;
+        if (Physics.Raycast(cam.transform.position, cam.transform.forward, out hit, range)) {
+
+            if (canShoot)
+            {
+                Debug.Log(hit.transform.name);
+                MF.Play();
+                StartCoroutine("loadShoot", .5f);
+                GameObject Bclone = Instantiate(Bullet);
+                Bclone.GetComponent<VARHOLDER>().hitP = cam.transform.forward * 80000;
+                Bullet.transform.position = sPoint.transform.position;
+                Bclone.transform.LookAt(Bclone.GetComponent<VARHOLDER>().hitP);
+                Debug.Log("Looking at " +Bclone.GetComponent<VARHOLDER>().hitP);
+                Bclone.SetActive(true);
+                Bclone.GetComponent<MeshRenderer>().enabled = true;
+              //  Bclone.transform.rotation = sPoint.transform.rotation;
+                Debug.Log("Bullet isn't null");
+                ParticleSystem MFClone = Instantiate(MF, Bclone.transform.position, Bclone.transform.rotation);
+                MFClone.transform.parent = Bclone.transform;
+                MFClone.Stop();
+                var main = MFClone.GetComponent<ParticleSystem>().main;
+                main.duration = 60.0f;
+                MFClone.Play();
+                ParticleSystem CDClone = Instantiate(CD, hit.point, Quaternion.LookRotation(hit.normal));
+                CDClone.transform.SetParent(hit.transform);
+                CDClone.Play();
+                Destroy(CDClone, 1f);
+                Debug.Log("end");
+                return Bclone;
+            }
+        }
+        return null;
+    }
+    IEnumerator loadShoot(float waittime)
+    {
+        canShoot = false;
+        yield return new WaitForSeconds(waittime);
+        canShoot = true;
+    }
+    IEnumerator clock(float waittime,GameObject cOBJ)
+    {
+        yield return new WaitForSeconds(waittime);
+        cOBJ.transform.LookAt(cOBJ.GetComponent<VARHOLDER>().hitP);
+
+    }
+}
+
+ENEMY SCRIPT:
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class EnemyScriptGSSPP : MonoBehaviour
+{
+    [SerializeField] private float moveSpeed;
+    [SerializeField] private GameObject player;
+    [SerializeField] private float atkDistance;
+    [SerializeField] private GameObject cSphere;
+    [SerializeField] private int DMG;
+    [SerializeField] private bool isATK;
+    [SerializeField] private int hp;
+    void Start()
+    {
+        
+    }
+
+    // Update is called once per frame
+    void FixedUpdate()
+    {
+        transform.LookAt(new Vector3(player.transform.position.x, transform.position.y, player.transform.position.z));
+        if ((Vector3.Distance(transform.position, player.transform.position) <= atkDistance) == false)
+        {
+            transform.Translate(Vector3.forward * Time.deltaTime * moveSpeed);
+        }
+        else { if (isATK == false) { StartCoroutine("Attack", 1); } }
+
+    }
+    IEnumerator Attack(float waittime)
+    {
+        isATK = true;
+        yield return new WaitForSeconds(waittime);
+        player.GetComponent<PlayerMovementGSSPP>().HP -= DMG;
+        isATK = false;
+    }
+    public void Damage(int damage)
+    {
+        hp -= damage;
+        if (hp <= 0f)
+        {
+            Destroy(this);
+        }
+    }
+}
+
+BULLET SCRIPT:
+
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class VARHOLDER : MonoBehaviour
+{
+    [SerializeField] public Vector3 hitP;
+    [SerializeField] public float bSpeed;
+    [SerializeField] private int dmg;
+    // Start is called before the first frame update
+    void Start()
+    {
+        
+    }
+    public void TurnBullet()
+    {
+        transform.LookAt(hitP);
+    }
+    // Update is called once per frame
+    void FixedUpdate()
+    {
+        transform.Translate(transform.forward * Time.deltaTime * bSpeed);
+    }
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.transform.gameObject.tag == "Enemy")
+        {
+            collision.transform.gameObject.GetComponent<EnemyScriptGSSPP>().Damage(dmg);
+        }
+    }
+}
+
